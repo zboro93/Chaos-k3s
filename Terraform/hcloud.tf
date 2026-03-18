@@ -32,7 +32,36 @@ resource "hcloud_server" "k3s-worker-nodes" {
   ssh_keys    = [data.hcloud_ssh_key.chaos_ssh_key.id]
 }
 
+# Create private network for servers
+resource "hcloud_network" "k3s-priv-network" {
+  name     = "network"
+  ip_range = "10.0.0.0/16"
+}
 
+# Create subnet
+resource "hcloud_network_subnet" "k3s-priv-subnet" {
+  network_id   = hcloud_network.k3s-priv-network.id
+  type         = "server"
+  network_zone = "eu-central"
+  ip_range     = "10.0.1.0/24"
+}
+
+# Add servers to subnet
+resource "hcloud_server_network" "k3s-master-network" {
+  server_id = hcloud_server.k3s-master-node.id
+  subnet_id = hcloud_network_subnet.k3s-priv-subnet.id
+  ip        = "10.0.1.1"
+}
+
+resource "hcloud_server_network" "k3s-worker-network" {
+  count     = 2
+  server_id = hcloud_server.k3s-worker-nodes[count.index].id
+  subnet_id = hcloud_network_subnet.k3s-priv-subnet.id
+  ip        = "10.0.1.${count.index + 2}"
+}
+
+
+#Output master IP
 output "k3s-master-node-ip" {
   value = hcloud_server.k3s-master-node.ipv4_address
 }
