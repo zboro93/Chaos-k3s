@@ -19,6 +19,11 @@ resource "hcloud_server" "k3s-master-node" {
   server_type = "cpx22"
   location    = "nbg1"
   ssh_keys    = [data.hcloud_ssh_key.chaos_ssh_key.id]
+    lables = {
+      "Project" : "Chaos-k3s"
+      "Role" : "Master"
+    }
+
 }
 
 
@@ -30,6 +35,10 @@ resource "hcloud_server" "k3s-worker-nodes" {
   server_type = "cpx22"
   location    = "nbg1"
   ssh_keys    = [data.hcloud_ssh_key.chaos_ssh_key.id]
+    lables = {
+      "Project" : "Chaos-k3s"
+      "Role" : "Worker"
+    }
 }
 
 # Create private network for servers
@@ -107,4 +116,8 @@ resource "hcloud_firewall_attachment" "fw_ref" {
 #Output master IP
 output "k3s-master-node-ip" {
   value = hcloud_server.k3s-master-node.ipv4_address
+}
+
+output "k3s-worker-nodes-ip" {
+  value = hcloud_server.k3s-worker-nodes[*].ipv4_address
 }
