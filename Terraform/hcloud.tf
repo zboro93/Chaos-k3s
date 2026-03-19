@@ -60,6 +60,49 @@ resource "hcloud_server_network" "k3s-worker-network" {
   ip        = "10.0.1.${count.index + 2}"
 }
 
+# Create firewall
+resource "hcloud_firewall" "chaos_firewall" {
+  name = "Chaos-k3s-firewall"
+  rule {
+    direction = "in"
+    protocol  = "tcp"
+    port      = "22"
+    source_ips = [
+      "0.0.0.0/0"
+    ]
+  }
+  rule {
+    direction = "in"
+    protocol  = "tcp"
+    port      = "80"
+    source_ips = [
+      "0.0.0.0/0"
+    ]
+  }
+  rule {
+    direction = "in"
+    protocol  = "tcp"
+    port      = "443"
+    source_ips = [
+      "0.0.0.0/0"
+    ]
+  }
+  rule {
+    direction = "in"
+    protocol  = "tcp"
+    port      = "6443"
+    source_ips = [
+      "0.0.0.0/0"
+    ]
+  }
+}
+
+# Attach firewall to servers
+resource "hcloud_firewall_attachment" "fw_ref" {
+  firewall_id = hcloud_firewall.chaos_firewall.id
+  server_ids  = [hcloud_server.k3s-master-node.id, hcloud_server.k3s-worker-nodes[0].id, hcloud_server.k3s-worker-nodes[1].id]
+}
+
 
 #Output master IP
 output "k3s-master-node-ip" {
