@@ -19,7 +19,7 @@ resource "hcloud_server" "k3s-master-node" {
   server_type = "cpx22"
   location    = "nbg1"
   ssh_keys    = [data.hcloud_ssh_key.chaos_ssh_key.id]
-    lables = {
+    labels = {
       "Project" : "Chaos-k3s"
       "Role" : "Master"
     }
@@ -35,7 +35,7 @@ resource "hcloud_server" "k3s-worker-nodes" {
   server_type = "cpx22"
   location    = "nbg1"
   ssh_keys    = [data.hcloud_ssh_key.chaos_ssh_key.id]
-    lables = {
+    labels = {
       "Project" : "Chaos-k3s"
       "Role" : "Worker"
     }
