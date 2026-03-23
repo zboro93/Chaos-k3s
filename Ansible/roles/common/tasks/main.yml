@@ -5,3 +5,31 @@
     update_cache: yes
     cache_valid_time: 3600
     upgrade: yes
+
+- name: Install required packages
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - nano
+      - net-tools
+    state: latest
+
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+
+- name: Disable swap
+  shell: swapoff -a
+
+- name: Disable swap in fstab
+  replace:
+    path: /etc/fstab
+    regexp: '^([^#].*\sswap\s.*)$'
+    replace: '# \1'
+
+- name: Disable ufw
+  community.general.ufw:
+    state: disable
+
