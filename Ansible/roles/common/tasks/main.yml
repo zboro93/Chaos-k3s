@@ -31,5 +31,5 @@
 
 - name: Disable ufw
   community.general.ufw:
-    state: disable
+    state: disabled
 

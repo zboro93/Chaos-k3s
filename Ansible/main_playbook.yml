@@ -3,3 +3,13 @@
   become: yes
   roles:
     - common
+
+- hosts: master
+  become: yes
+  roles:
+    - k3s_master
+
+- hosts: workers
+  become: yes
+  roles:
+    - k3s_worker
