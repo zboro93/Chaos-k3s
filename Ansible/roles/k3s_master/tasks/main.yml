@@ -1,9 +1,9 @@
 ---
 # tasks file for k3s_master
-
 - name: install k3s
   shell: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --node-ip {{ master_private_ip }} --advertise-address {{ master_private_ip }}" sh -
-  creates: /usr/local/bin/k3s
+  args:
+    creates: /usr/local/bin/k3s
 
 - name: wait for k3s service
   service:
