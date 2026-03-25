@@ -104,6 +104,15 @@ resource "hcloud_firewall" "chaos_firewall" {
       "0.0.0.0/0"
     ]
   }
+  rule {
+    direction = "in"
+    protocol  = "tcp"
+    port      = "30080"
+    source_ips = [
+      "0.0.0.0/0"
+    ]
+  }
+
 }
 
 # Attach firewall to servers

@@ -13,3 +13,8 @@
   become: yes
   roles:
     - k3s_worker
+
+- hosts: master
+  become: yes
+  roles:
+    - podinfo

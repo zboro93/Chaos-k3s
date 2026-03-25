@@ -1,0 +1,17 @@
+---
+# tasks file for podinfo
+- name: Add repository to Helm
+  command: helm repo add podinfo https://stefanprodan.github.io/podinfo
+
+- name: upadte repo
+  command: helm repo update
+
+- name: intall podinfo
+  command: helm upgrade --install podinfo podinfo/podinfo --namespace app-production --create-namespace --set service.type=NodePort --set service.nodePort=30080
+
+- name: check pod
+  command: kubectl get pods -n app-production
+  register: podinfoPodStatus
+  until: "'Running' in podinfoPodStatus.stdout"
+  retries: 10
+  delay: 10

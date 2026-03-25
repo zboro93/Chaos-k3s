@@ -24,3 +24,17 @@
 - name: acquire k3s token
   command: cat /var/lib/rancher/k3s/server/node-token
   register: k3s_token
+
+- name: copy kubeconfig to standard location
+  shell: mkdir -p ~/.kube && cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+
+- name: Download helm install script
+  get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    dest: /tmp/get_helm.sh
+    mode: '0700'
+
+- name: Install helm
+  shell: /tmp/get_helm.sh
+  args:
+    creates: /usr/local/bin/helm
