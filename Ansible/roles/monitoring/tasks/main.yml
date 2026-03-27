@@ -1,25 +1,26 @@
+---
 #tasks for monitoring installation - Prometheus, Gafana, AlrtManager, Loki, Promtail
 - name: add repository kube-prometheus-stack
   command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-  
+
 - name: add repo Loki-Stack
   command: helm repo add grafana https://grafana.github.io/helm-charts
-  
+
 - name: update repo
   command: helm repo update
-  
+
 - name: install kube-prometheus-stack
-  command: helm upgrade 
+  command: helm upgrade
     --install prometheus-stack prometheus-community/kube-prometheus-stack
-	  --namespace monitoring-stack 
-	  --create-namespace 
-	  --set prometheus.nodeSelector."role"=monitoring
-	  --set grafana.nodeSelector."role"=monitoring
-    --set grafana.service.type=NodePort 
-    --set grafana.service.nodePort=30300
-	
-- name: install Loki
-  command: helm upgrade 
-    --install loki grafana/loki-stack 
     --namespace monitoring-stack
-	  --set loki.nodeSelector."role"=monitoring
+    --create-namespace
+    --set prometheus.nodeSelector."role"=monitoring
+    --set grafana.nodeSelector."role"=monitoring
+    --set grafana.service.type=NodePort
+    --set grafana.service.nodePort=30300
+
+- name: install Loki
+  command: helm upgrade
+    --install loki grafana/loki-stack
+    --namespace monitoring-stack
+    --set loki.nodeSelector."role"=monitoring

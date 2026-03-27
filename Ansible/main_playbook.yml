@@ -18,3 +18,4 @@
   become: yes
   roles:
     - podinfo
+    - monitoring
