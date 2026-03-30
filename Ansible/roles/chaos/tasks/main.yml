@@ -1,0 +1,44 @@
+---
+#tasks for chaos mesh installation
+- name: add chaos-mesh repo
+  command: helm repo add chaos-mesh https://charts.chaos-mesh.org
+
+- name: update repo
+  command: helm repo update
+
+- name: install chaos-mesh
+  command: helm upgrade
+    --install chaos-mesh chaos-mesh/chaos-mesh
+    --namespace=chaos-mesh
+    --create-namespace
+    --set chaosDaemon.runtime=containerd
+    --set chaosDaemon.socketPath=/run/k3s/containerd/containerd.sock
+    --set dashboard.service.type=NodePort
+    --set dashboard.service.nodePort=30400
+    --set dashboard.nodeSelector."role"=monitoring-node
+    --set controllerManager.nodeSelector."role"=monitoring-node
+    --set dnsServer.nodeSelector."role"=monitoring-node
+    --version 2.8.2
+
+- name: wait for controller-manager
+  command: kubectl rollout status deployment/chaos-controller-manager -n chaos-mesh
+
+
+- name: check pod
+  command: kubectl get pods -n chaos-mesh
+  register: chaosMeshPodStatus
+  until: "'Running' in chaosMeshPodStatus.stdout"
+  retries: 10
+  delay: 10
+
+- name: patch mutating webhooks
+  shell: |
+    kubectl get mutatingwebhookconfiguration chaos-mesh-mutation -o json | \
+    sed 's/"port": 443/"port": 10250/g' | \
+    kubectl apply -f -
+
+- name: patch validating webhooks
+  shell: |
+    kubectl get validatingwebhookconfiguration chaos-mesh-validation -o json | \
+    sed 's/"port": 443/"port": 10250/g' | \
+    kubectl apply -f -

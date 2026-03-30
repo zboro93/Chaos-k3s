@@ -22,6 +22,9 @@
     --set grafana.nodeSelector."role"=monitoring-node
     --set grafana.service.type=NodePort
     --set grafana.service.nodePort=30300
+    --set alertmanager.nodeSelector."role"=monitoring-node
+    --set kube-state-metrics.nodeSelector."role"=monitoring-node
+    --set prometheus-operator.nodeSelector."role"=monitoring-node
 
 - name: install Loki
   command: helm upgrade

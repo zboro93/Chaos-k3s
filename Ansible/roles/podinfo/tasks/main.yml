@@ -16,7 +16,7 @@
     --create-namespace
     --set service.type=NodePort
     --set service.nodePort=30080
-    --set podinfo.nodeSelector."role"=app-node
+    --set nodeSelector."role"=app-node
 
 - name: check pod
   command: kubectl get pods -n app-production
