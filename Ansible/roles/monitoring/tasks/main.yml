@@ -9,13 +9,17 @@
 - name: update repo
   command: helm repo update
 
+
+- name: label monitoring node
+  command: kubectl label node k3s-worker-node2 role=monitoring-node
+
 - name: install kube-prometheus-stack
   command: helm upgrade
     --install prometheus-stack prometheus-community/kube-prometheus-stack
     --namespace monitoring-stack
     --create-namespace
-    --set prometheus.nodeSelector."role"=monitoring
-    --set grafana.nodeSelector."role"=monitoring
+    --set prometheus.nodeSelector."role"=monitoring-node
+    --set grafana.nodeSelector."role"=monitoring-node
     --set grafana.service.type=NodePort
     --set grafana.service.nodePort=30300
 
@@ -23,4 +27,5 @@
   command: helm upgrade
     --install loki grafana/loki-stack
     --namespace monitoring-stack
-    --set loki.nodeSelector."role"=monitoring
+    --set loki.nodeSelector."role"=monitoring-node
+    --set loki.isDefault=false

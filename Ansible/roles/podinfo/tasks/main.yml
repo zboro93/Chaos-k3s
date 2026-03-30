@@ -6,8 +6,17 @@
 - name: upadte repo
   command: helm repo update
 
+- name: label app node
+  command: kubectl label node k3s-worker-node1 role=app-node
+
 - name: intall podinfo
-  command: helm upgrade --install podinfo podinfo/podinfo --namespace app-production --create-namespace --set service.type=NodePort --set service.nodePort=30080
+  command: helm upgrade
+    --install podinfo podinfo/podinfo
+    --namespace app-production
+    --create-namespace
+    --set service.type=NodePort
+    --set service.nodePort=30080
+    --set podinfo.nodeSelector."role"=app-node
 
 - name: check pod
   command: kubectl get pods -n app-production
