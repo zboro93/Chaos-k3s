@@ -27,10 +27,14 @@
     --create-namespace
     --values /tmp/prometheus-values.yaml
 
+- name: copy loki values
+  copy:
+    src: loki-values.yaml
+    dest: /tmp/loki-values.yaml
+
 - name: install Loki
   command: >
     helm upgrade
-    --install loki grafana/loki-stack
+    --install loki grafana/loki
     --namespace monitoring-stack
-    --set loki.nodeSelector."role"=monitoring-node
-    --set loki.isDefault=false
+    --values /tmp/loki-values.yaml
