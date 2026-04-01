@@ -1,8 +1,11 @@
 ---
 # tasks file for k3s_worker
+- name: get private interface name
+  shell: ip addr | grep -B2 "{{ worker_private_ip }}" | grep -oP '^\d+:\s+\K[^:@]+'
+  register: private_iface
 
 - name: install k3s
-  shell: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="agent --node-ip {{ worker_private_ip }}" K3S_URL=https://{{ hostvars[groups['master'][0]]['master_private_ip'] }}:6443 K3S_TOKEN={{ hostvars[groups['master'][0]]['k3s_token'].stdout }} sh -
+  shell: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="agent --node-ip {{ worker_private_ip }} --flannel-iface {{ private_iface.stdout }}" K3S_URL=https://{{ hostvars[groups['master'][0]]['master_private_ip'] }}:6443 K3S_TOKEN={{ hostvars[groups['master'][0]]['k3s_token'].stdout }} sh -
   args:
     creates: /usr/local/bin/k3s
 

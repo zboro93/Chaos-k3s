@@ -17,6 +17,7 @@
     --set dashboard.service.nodePort=30400
     --set dashboard.nodeSelector."role"=monitoring-node
     --set controllerManager.nodeSelector."role"=monitoring-node
+    --set controllerManager.webhookPort=9443
     --set dnsServer.nodeSelector."role"=monitoring-node
     --version 2.8.2
 
@@ -31,14 +32,5 @@
   retries: 10
   delay: 10
 
-- name: patch mutating webhooks
-  shell: |
-    kubectl get mutatingwebhookconfiguration chaos-mesh-mutation -o json | \
-    sed 's/"port": 443/"port": 10250/g' | \
-    kubectl apply -f -
-
-- name: patch validating webhooks
-  shell: |
-    kubectl get validatingwebhookconfiguration chaos-mesh-validation -o json | \
-    sed 's/"port": 443/"port": 10250/g' | \
-    kubectl apply -f -
+- name: patch chaos-mesh service to expose port 10250
+  command: kubectl patch svc chaos-mesh-controller-manager -n chaos-mesh --type='json' -p='[{"op":"add","path":"/spec/ports/-","value":{"name":"webhook-10250","port":10250,"protocol":"TCP","targetPort":10250}}]'
