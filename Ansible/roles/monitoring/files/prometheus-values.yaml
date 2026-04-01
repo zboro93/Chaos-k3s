@@ -1,0 +1,26 @@
+prometheus:
+  nodeSelector:
+    role: monitoring-node
+
+grafana:
+  nodeSelector:
+    role: monitoring-node
+  service:
+    type: NodePort
+    nodePort: 30300
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      uid: loki
+      url: http://loki.monitoring-stack.svc.cluster.local:3100
+      access: proxy
+      jsonData:
+        maxLines: 1000
+
+alertmanager:
+  nodeSelector:
+    role: monitoring-node
+
+kube-state-metrics:
+  nodeSelector:
+    role: monitoring-node

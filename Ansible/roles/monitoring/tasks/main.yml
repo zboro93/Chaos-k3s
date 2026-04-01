@@ -12,22 +12,24 @@
 
 - name: label monitoring node
   command: kubectl label node k3s-worker-node2 role=monitoring-node
+  ignore_errors: true
+
+- name: copy prometheus values
+  copy:
+    src: prometheus-values.yaml
+    dest: /tmp/prometheus-values.yaml
 
 - name: install kube-prometheus-stack
-  command: helm upgrade
+  command: >
+    helm upgrade
     --install prometheus-stack prometheus-community/kube-prometheus-stack
     --namespace monitoring-stack
     --create-namespace
-    --set prometheus.nodeSelector."role"=monitoring-node
-    --set grafana.nodeSelector."role"=monitoring-node
-    --set grafana.service.type=NodePort
-    --set grafana.service.nodePort=30300
-    --set alertmanager.nodeSelector."role"=monitoring-node
-    --set kube-state-metrics.nodeSelector."role"=monitoring-node
-    --set prometheus-operator.nodeSelector."role"=monitoring-node
+    --values /tmp/prometheus-values.yaml
 
 - name: install Loki
-  command: helm upgrade
+  command: >
+    helm upgrade
     --install loki grafana/loki-stack
     --namespace monitoring-stack
     --set loki.nodeSelector."role"=monitoring-node
