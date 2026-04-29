@@ -24,6 +24,11 @@
 - name: wait for controller-manager
   command: kubectl rollout status deployment/chaos-controller-manager -n chaos-mesh
 
+- name: label namespace for chaos
+  command: kubectl label namespace app-production chaos-mesh.org/inject=enabled --overwrite
+
+- name: label namepsace if empty
+  command: kubectl label namespace app-production name=app-production --overwrite
 
 - name: check pod
   command: kubectl get pods -n chaos-mesh
@@ -34,3 +39,4 @@
 
 - name: patch chaos-mesh service to expose port 10250
   command: kubectl patch svc chaos-mesh-controller-manager -n chaos-mesh --type='json' -p='[{"op":"add","path":"/spec/ports/-","value":{"name":"webhook-10250","port":10250,"protocol":"TCP","targetPort":10250}}]'
+  ignore_errors: yes

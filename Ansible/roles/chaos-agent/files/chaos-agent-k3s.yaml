@@ -1,0 +1,128 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Namespace for chaos experiments (created if it does not exist)
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: chaos-testing
+  labels:
+    chaos-mesh.org/inject: enabled
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# ServiceAccount
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: chaos-agent
+  namespace: chaos-testing
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# ClusterRole – read access to cluster resources + Chaos Mesh CR management
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: chaos-agent
+rules:
+  # Read pods and nodes
+  - apiGroups: [""]
+    resources: ["pods", "nodes", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  # Chaos Mesh Custom Resources
+  - apiGroups: ["chaos-mesh.org"]
+    resources:
+      - stresschaos
+      - podchaos
+      - networkchaos
+      - httpchaos
+      - iochaos
+      - timechaos
+      - dnschaos
+      - awschaos
+      - gcpchaos
+      - physicalmachinechaos
+    verbs: ["get", "list", "create", "delete", "patch", "update", "watch"]
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# ClusterRoleBinding
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: chaos-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: chaos-agent
+subjects:
+  - kind: ServiceAccount
+    name: chaos-agent
+    namespace: chaos-testing
+
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# Role and RoleBinding for app-production
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: chaos-agent-app-reader
+  namespace: app-production
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: chaos-agent-app-reader
+  namespace: app-production
+subjects:
+  - kind: ServiceAccount
+    name: chaos-agent
+    namespace: chaos-testing
+roleRef:
+  kind: Role
+  name: chaos-agent-app-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# Secret – API keys (fill in before deploying!)
+# Use: kubectl create secret generic chaos-agent-secrets \
+#   --from-literal=anthropic-api-key=sk-ant-... \
+#   --from-literal=slack-webhook-url=https://hooks.slack.com/... \
+#   -n chaos-testing
+# ─────────────────────────────────────────────────────────────────────────────
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: chaos-agent-secrets
+#   namespace: chaos-testing
+# type: Opaque
+# stringData:
+#   anthropic-api-key: "CHANGE_ME"
+#   slack-webhook-url: "CHANGE_ME"
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# ConfigMap – agent parameters
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chaos-agent-config
+  namespace: chaos-testing
+data:
+  PROMETHEUS_URL: "http://prometheus-stack-kube-prom-prometheus.monitoring-stack.svc.cluster.local:9090"
+  CHAOS_NAMESPACE: "chaos-testing"
+  APP_NAMESPACE: "app-production"
+  APP_LABEL_SELECTOR: "app.kubernetes.io/name=podinfo"
+  CHAOS_WAIT_SECONDS: "120"
+  DRY_RUN: "false"

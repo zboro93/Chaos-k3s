@@ -1,0 +1,245 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Namespace for chaos experiments (created if it does not exist)
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: chaos-testing
+  labels:
+    chaos-mesh.org/inject: enabled
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# ServiceAccount
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: chaos-agent
+  namespace: chaos-testing
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# ClusterRole – read access to cluster resources + Chaos Mesh CR management
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: chaos-agent
+rules:
+  # Read pods and nodes
+  - apiGroups: [""]
+    resources: ["pods", "nodes", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  # Chaos Mesh Custom Resources
+  - apiGroups: ["chaos-mesh.org"]
+    resources:
+      - stresschaos
+      - podchaos
+      - networkchaos
+      - httpchaos
+      - iochaos
+      - timechaos
+      - dnschaos
+      - awschaos
+      - gcpchaos
+      - physicalmachinechaos
+    verbs: ["get", "list", "create", "delete", "patch", "update", "watch"]
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# ClusterRoleBinding
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: chaos-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: chaos-agent
+subjects:
+  - kind: ServiceAccount
+    name: chaos-agent
+    namespace: chaos-testing
+
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# Role and RoleBinding for app-production
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: chaos-agent-app-reader
+  namespace: app-production
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: chaos-agent-app-reader
+  namespace: app-production
+subjects:
+  - kind: ServiceAccount
+    name: chaos-agent
+    namespace: chaos-testing
+roleRef:
+  kind: Role
+  name: chaos-agent-app-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# Secret – API keys (fill in before deploying!)
+# Use: kubectl create secret generic chaos-agent-secrets \
+#   --from-literal=anthropic-api-key=sk-ant-... \
+#   --from-literal=slack-webhook-url=https://hooks.slack.com/... \
+#   -n chaos-testing
+# ─────────────────────────────────────────────────────────────────────────────
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: chaos-agent-secrets
+#   namespace: chaos-testing
+# type: Opaque
+# stringData:
+#   anthropic-api-key: "CHANGE_ME"
+#   slack-webhook-url: "CHANGE_ME"
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# ConfigMap – agent parameters
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chaos-agent-config
+  namespace: chaos-testing
+data:
+  PROMETHEUS_URL: "http://prometheus-stack-kube-prom-prometheus.monitoring-stack.svc.cluster.local:9090"
+  CHAOS_NAMESPACE: "chaos-testing"
+  APP_NAMESPACE: "app-production"
+  APP_LABEL_SELECTOR: "app=podinfo"
+  CHAOS_WAIT_SECONDS: "120"
+  DRY_RUN: "false"
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# CronJob – runs automatically every 15 minutes
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: chaos-agent
+  namespace: chaos-testing
+  labels:
+    app: chaos-agent
+    component: automation
+spec:
+  schedule: "*/15 * * * *"
+  timeZone: "Europe/Warsaw"
+  concurrencyPolicy: Forbid          # Do not start a new run if the previous one is still running
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 120
+  jobTemplate:
+    spec:
+      backoffLimit: 0                # Do not retry on failure (the agent handles errors internally)
+      activeDeadlineSeconds: 900     # Max 15 min (matches the schedule interval)
+      template:
+        metadata:
+          labels:
+            app: chaos-agent
+            run-type: scheduled
+        spec:
+          serviceAccountName: chaos-agent
+          restartPolicy: Never
+          # Run on worker-2 (monitoring-node) – co-located with Chaos Mesh
+          nodeSelector:
+            kubernetes.io/hostname: k3s-worker-node2
+          tolerations: []
+          containers:
+            - name: chaos-agent
+              image: zboromir/chaos-agent:latest   # replace with your registry
+              imagePullPolicy: Always
+              envFrom:
+                - configMapRef:
+                    name: chaos-agent-config
+              env:
+                - name: ANTHROPIC_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: chaos-agent-secrets
+                      key: anthropic-api-key
+                - name: SLACK_WEBHOOK_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: chaos-agent-secrets
+                      key: slack-webhook-url
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "256Mi"
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# Job – manual trigger (run with: kubectl apply -f k8s-manifests.yaml)
+# Kept separate from CronJob for easy on-demand triggering
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: chaos-agent-manual
+  namespace: chaos-testing
+  labels:
+    app: chaos-agent
+    component: automation
+  annotations:
+    # Delete the old Job before re-applying:
+    # kubectl delete job chaos-agent-manual -n chaos-testing --ignore-not-found
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 900
+  template:
+    metadata:
+      labels:
+        app: chaos-agent
+        run-type: manual
+    spec:
+      serviceAccountName: chaos-agent
+      restartPolicy: Never
+      nodeSelector:
+        kubernetes.io/hostname: k3s-worker-node2
+      tolerations: []
+      containers:
+        - name: chaos-agent
+          image: zboromir/chaos-agent:latest   # replace with your registry
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: chaos-agent-config
+          env:
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: chaos-agent-secrets
+                  key: anthropic-api-key
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: chaos-agent-secrets
+                  key: slack-webhook-url
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"

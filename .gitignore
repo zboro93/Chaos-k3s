@@ -4,3 +4,6 @@ terraform.tfvars
 .terraform.lock.hcl
 terraform.tfstate
 terraform.tfstate.backup
+.vault_pass
+chaos-agent-files
+!chaos-agent-files/run-experiment.sh

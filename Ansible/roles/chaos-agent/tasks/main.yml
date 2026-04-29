@@ -1,0 +1,30 @@
+---
+# roles/chaos-agent/tasks/main.yaml
+# Deploys the Chaos Engineering AI Agent to the k3s cluster
+
+- name: Copy k8s manifests to master
+  copy:
+    src: chaos-agent-k3s.yaml
+    dest: /tmp/chaos-agent-k3s.yaml
+
+- name: Apply RBAC
+  command: kubectl apply -f /tmp/chaos-agent-k3s.yaml
+
+
+- name: Create chaos-agent secrets
+  shell: >
+    kubectl create secret generic chaos-agent-secrets
+    --from-literal=anthropic-api-key={{ anthropic_api_key }}
+    --from-literal=slack-webhook-url={{ slack_webhook_url }}
+    -n chaos-testing
+    --dry-run=client -o yaml | kubectl apply -f -
+#  no_log: true   # Do not log API keys
+
+#- name: Verify CronJob was created
+#  command: kubectl get cronjob chaos-agent -n chaos-testing
+#  delegate_to: master
+#  register: cronjob_check
+
+#- name: Show CronJob status
+#  debug:
+#    var: cronjob_check.stdout
