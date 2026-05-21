@@ -2,9 +2,6 @@ name: "Terraform Apply Infra"
 
 on: [workflow_dispatch]
 
-env:
-  TF_API_TOKEN: "${{ secrets.TERRAFORM_LOGIN_TOKEN }}"
-
 jobs:
   terraform:
     name: "Apply Terraform Infra"
@@ -28,6 +25,8 @@ jobs:
           
       - name: Terraform init
         id: init
+        env:
+          TF_CLOUD_TOKEN: "${{ secrets.TERRAFORM_LOGIN_TOKEN }}"
         run: terraform init
 
       - name: Terraform validate
