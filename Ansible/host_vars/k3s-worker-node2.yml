@@ -1,0 +1,2 @@
+worker_private_ip: 10.0.1.3
+node_label: monitoring
