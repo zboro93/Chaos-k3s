@@ -1,0 +1,43 @@
+name: "Terraform Apply Infra"
+
+on: [workflow_dispatch]
+
+jobs:
+  terraform:
+    name: "Apply Terraform Infra"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./terraform
+
+      
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4     
+      
+      - name: Setup Terraform with version
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.5
+          
+      - name: Terraform init
+        id: init
+        run: terraform init
+
+      - name: Terraform validate
+        id: validate
+        run: terraform validate
+      
+      - name: terraform apply
+        id: apply
+        env:
+          TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
+        run: terraform apply -auto-approve -input=false
+
+      - name: terraform output
+        id: output
+        run: terraform output
+      
