@@ -18,9 +18,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: ./terraform
-    env:
-      TARGET_ENV: ${{ github.event.inputs.environment }}
+        working-directory: ./Terraform
         
     steps:
       - name: Checkout
@@ -30,6 +28,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.13.5
+          cli_config_credentials_token: ${{ secrets.TERRAFORM_LOGIN_TOKEN }}
           
       - name: Terraform init
         id: init
