@@ -36,6 +36,8 @@ jobs:
 
       - name: Terraform destroy
         id: destory
+        env:
+          TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}       
         run: terraform destroy -auto-approve -input=false
         
       - name: Log confirmation
