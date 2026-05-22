@@ -1,1 +1,65 @@
+name: "Ansible Configure new servers"
+
+on:
+  workflow_run:
+    workflows: ["Terraform Apply Infra"]
+    types:
+      - completed
+ 
+jobs:
+  Ansible:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    name: "Configure new instances"
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    defaults:
+      run:
+        shell: bash
+#        working-directory: ./ansible
+        
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+       
+      - name: Download Public IP from artifacts
+        uses: actions/download-artifact@v5
+        with:
+          name: ansible-inventory
+          path: ./ansible
+          repository: ${{ github.event.workflow_run.repository.full_name }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+          
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CHAOS_SSH_PRIVATE_KEY }}" > ~/.ssh/ssh_key
+          chmod 600 ~/.ssh/ssh_key
+
+          
+      - name: Disable host key checking
+        run: |
+          echo "StrictHostKeyChecking=no" >> ~/.ssh/config
+
+
+      - name: install Ansible
+        shell: bash
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+
+      - name: Setup Ansible Vault password
+        run: |
+          echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > vault_pass.txt
+          
+      - name: Debug filesystem
+        run: |
+          echo "PWD:"
+          pwd
+          echo
+          echo "TREE . :"
+          ls -R .
+
 
