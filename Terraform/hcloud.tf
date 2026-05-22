@@ -150,6 +150,10 @@ output "k3s-master-node-ip" {
   value = hcloud_server.k3s-master-node.ipv4_address
 }
 
-output "k3s-worker-nodes-ip" {
-  value = hcloud_server.k3s-worker-nodes[*].ipv4_address
+output "k3s-worker-node1-ip" {
+  value = hcloud_server.k3s-worker-nodes[0].ipv4_address
+}
+
+output "k3s-worker2node2-ip" {
+  value = hcloud_server.k3s-worker-nodes[1].ipv4_address
 }
