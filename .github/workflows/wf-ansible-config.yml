@@ -62,4 +62,15 @@ jobs:
           echo "TREE . :"
           ls -R .
 
+      - name: Run Ansible Playbook
+        working-directory: ./ansible
+        run: |
+          ansible-playbook \
+            -i inventory.ini \
+            -u root \
+            --private-key ~/.ssh/ssh_key \
+            --vault-password-file ../vault_pass.txt \
+            main_playbook.yml
+
+
 
