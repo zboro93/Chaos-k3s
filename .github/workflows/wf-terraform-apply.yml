@@ -45,4 +45,38 @@ jobs:
           terraform output -json > ./tf-output.json
 
       - name: terraform output view
-        run: cat ./tf-output.json     
+        run: cat ./tf-output.json   
+
+      - name: Install jq (if needed)
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+ 
+      - name: parse output to Ansible inventory
+        run: | 
+          set -e
+          (
+            echo "[master]"
+            jq -r '
+              to_entries[]
+              | select(.key | contains("master"))
+              | "\(.key | sub("-ip$"; "")) ansible_host=\(.value.value)"
+            ' tf-output.json
+          
+            echo ""
+            echo "[workers]"
+            jq -r '
+              to_entries[]
+              | select(.key | contains("worker"))
+              | "\(.key | sub("-ip$"; "")) ansible_host=\(.value.value)"
+            ' tf-output.json
+          
+            echo ""
+            echo "[k3s_cluster:children]"
+            echo "master"
+            echo "workers"
+          ) > inventory.ini
+          
+
+      - name: Show inventory
+        run: cat inventory.ini
+
