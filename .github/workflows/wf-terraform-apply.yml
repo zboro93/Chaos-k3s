@@ -84,4 +84,4 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: ansible-inventory
-          path: inventory.ini
+          path: ./Terraform/inventory.ini
