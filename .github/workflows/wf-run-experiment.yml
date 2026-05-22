@@ -3,6 +3,9 @@ name: "Run Experiment"
 on: 
   workflow_dispatch:
     inputs:
+      k3s_master_ip:
+        description: "Master node IP"
+        required: true
       experiment_type:
         options:
           - pod_kill
@@ -26,20 +29,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Get master IP
-        run: |
-          MASTER_IP=$(awk '/\[master\]/{flag=1; next} /\[/{flag=0} flag && /ansible_host/ {print $2}' inventory.ini | cut -d= -f2)
-          echo "MASTER_IP=$MASTER_IP" >> $GITHUB_ENV
           
       - name: Copy to Remote Server
         uses: pierrickdelrieu/scp-action@v0.1.0
         with:
-          host: ${{ env.MASTER_IP }}
+          host: ${{ inputs.k3s_master_ip }}
           ssh_port: 22
           ssh_username: root
           ssh_key: ${{ secrets.CHAOS_SSH_PRIVATE_KEY }}
-          source_dir: ./Chaos_experiment/
+          source_dir: ./Chaos_experiment
           destination_dir: /tmp
 
       - name: Setup SSH
@@ -47,16 +45,14 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.CHAOS_SSH_PRIVATE_KEY }}" > ~/.ssh/ssh_key
           chmod 600 ~/.ssh/ssh_key
-
-      - name: Disable host key checking
-        run: |
-          echo "StrictHostKeyChecking=no" >> ~/.ssh/config
-
+          
       - name: Execute experiment
         run: |
           OUTPUT=$(ssh -i ~/.ssh/ssh_key \
-            root@${{ env.MASTER_IP }} \
-            "/tmp/run-experiment.sh ${{ inputs.experiment_type }}")
+            -o StrictHostKeyChecking=no \
+            root@${{ inputs.k3s_master_ip }} \
+            "chmod +x /tmp/Chaos_experiment/run-experiment.sh && /tmp/Chaos_experiment/run-experiment.sh ${{ inputs.experiment_type }}")
+          echo "$OUTPUT"
           echo "OUTPUT<<EOF" >> $GITHUB_ENV
           echo "$OUTPUT" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
