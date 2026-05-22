@@ -63,7 +63,7 @@ jobs:
           ls -R .
 
       - name: Run Ansible Playbook
-        working-directory: ./ansible
+        working-directory: ./Ansible
         run: |
           ansible-playbook \
             -i inventory.ini \
