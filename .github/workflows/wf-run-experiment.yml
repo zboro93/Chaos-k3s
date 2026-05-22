@@ -29,16 +29,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-          
-      - name: Copy to Remote Server
-        uses: pierrickdelrieu/scp-action
+        
+      - name: Copy file via SCP
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ inputs.k3s_master_ip }}
-          ssh_port: 22
-          ssh_username: root
-          ssh_key: ${{ secrets.CHAOS_SSH_PRIVATE_KEY }}
-          source_dir: ./Chaos_experiment
-          destination_dir: /tmp
+          username: root
+          key: ${{ secrets.CHAOS_SSH_PRIVATE_KEY }}
+          source: "Chaos_experiment/run-experiment.sh"
+          target: "/tmp/"
+
 
       - name: Setup SSH
         run: |
