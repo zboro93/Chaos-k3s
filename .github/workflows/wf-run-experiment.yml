@@ -1,1 +1,25 @@
+name: "Run Experiment"
+
+on: 
+  workflow_dispatch:
+    inputs:
+      experiment_type:
+        options:
+          - pod_kill
+          - cpu_stress
+          - memory_stress
+          - network_delay
+        type: choice
+        description: Experiment to choose
+        required: true  
+
+jobs:
+  terraform:
+    name: "Run Experiment"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
 
