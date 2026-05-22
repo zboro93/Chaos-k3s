@@ -40,5 +40,7 @@ jobs:
 
       - name: terraform output
         id: output
-        run: terraform output
+        run: |
+          terraform output
+          terraform output -json > ./tf-output.json
       
