@@ -27,10 +27,10 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           name: ansible-inventory
-          path: ./ansible
+          path: ./Ansible
           repository: ${{ github.event.workflow_run.repository.full_name }}
           run-id: ${{ github.event.workflow_run.id }}
-
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Setup SSH
         run: |
