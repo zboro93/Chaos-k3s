@@ -10,6 +10,8 @@
 - name: Apply RBAC
   command: kubectl apply -f /tmp/chaos-agent-k3s.yaml
 
+- name: Create volume for logs
+  command: kubectl apply -f /tmp/chaos-agent-k3s-pvc.yaml
 
 - name: Create chaos-agent secrets
   shell: >
