@@ -34,6 +34,10 @@ spec:
       restartPolicy: Never
       nodeSelector:
         kubernetes.io/hostname: k3s-worker-node2
+      volumes:
+        - name: logs
+          persistentVolumeClaim:
+            claimName: chaos-agent-logs        
       containers:
         - name: chaos-agent
           image: zboromir/chaos-agent:latest
