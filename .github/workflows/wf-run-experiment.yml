@@ -1,5 +1,4 @@
 name: "Run Experiment"
-
 on: 
   workflow_dispatch:
     inputs:
@@ -15,7 +14,6 @@ on:
         type: choice
         description: Experiment to choose
         required: true  
-
 jobs:
   Experiment:
     name: "Run Experiment"
@@ -26,7 +24,6 @@ jobs:
     defaults:
       run:
         shell: bash
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,13 +37,12 @@ jobs:
           source: "Chaos_experiment/run-experiment.sh"
           target: "/tmp/"
 
-
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.CHAOS_SSH_PRIVATE_KEY }}" > ~/.ssh/ssh_key
           chmod 600 ~/.ssh/ssh_key
-          
+
       - name: Execute experiment
         run: |
           OUTPUT=$(ssh -i ~/.ssh/ssh_key \
@@ -54,20 +50,74 @@ jobs:
             root@${{ inputs.k3s_master_ip }} \
             "chmod +x /tmp/Chaos_experiment/run-experiment.sh && /tmp/Chaos_experiment/run-experiment.sh ${{ inputs.experiment_type }}")
           echo "$OUTPUT"
-          echo "OUTPUT<<EOF" >> $GITHUB_ENV
-          echo "$OUTPUT" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-        
+          
+          JOB_NAME=$(echo "$OUTPUT" | grep "✅ Job" | grep -oP 'chaos-\d+')
+          echo "JOB_NAME=$JOB_NAME" >> $GITHUB_ENV
+
+      - name: Wait for job to complete
+        run: |
+          ssh -i ~/.ssh/ssh_key \
+            -o StrictHostKeyChecking=no \
+            root@${{ inputs.k3s_master_ip }} \
+            "kubectl wait job/${{ env.JOB_NAME }} \
+              --for=condition=complete \
+              --timeout=900s \
+              -n chaos-testing || \
+             kubectl wait job/${{ env.JOB_NAME }} \
+              --for=condition=failed \
+              --timeout=10s \
+              -n chaos-testing || true"
+
+      - name: Collect logs from PVC
+        run: |
+          ssh -i ~/.ssh/ssh_key \
+            -o StrictHostKeyChecking=no \
+            root@${{ inputs.k3s_master_ip }} \
+            'LOGFILE=$(kubectl run log-reader --rm -i --restart=Never \
+              --image=busybox \
+              --overrides='"'"'{"spec":{"nodeSelector":{"kubernetes.io/hostname":"k3s-worker-node2"},"volumes":[{"name":"logs","persistentVolumeClaim":{"claimName":"chaos-agent-logs"}}],"containers":[{"name":"log-reader","image":"busybox","command":["ls","-t","/logs"],"volumeMounts":[{"name":"logs","mountPath":"/logs"}]}]}}'"'"' \
+              -n chaos-testing 2>/dev/null | head -1) && \
+            kubectl run log-reader2 --rm -i --restart=Never \
+              --image=busybox \
+              --overrides="{\"spec\":{\"nodeSelector\":{\"kubernetes.io/hostname\":\"k3s-worker-node2\"},\"volumes\":[{\"name\":\"logs\",\"persistentVolumeClaim\":{\"claimName\":\"chaos-agent-logs\"}}],\"containers\":[{\"name\":\"log-reader\",\"image\":\"busybox\",\"command\":[\"cat\",\"/logs/${LOGFILE}\"],\"volumeMounts\":[{\"name\":\"logs\",\"mountPath\":\"/logs\"}]}]}}" \
+              -n chaos-testing 2>/dev/null' > chaos-run.log
+          
+          echo "=== Log preview ==="
+          tail -20 chaos-run.log
+
+      - name: Upload logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chaos-logs-${{ env.JOB_NAME }}
+          path: chaos-run.log
+          retention-days: 30
+
       - name: Create GitHub Issue
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require('fs');
+            const log = fs.readFileSync('chaos-run.log', 'utf8');
+            const tail = log.slice(-8000);
+            const artifactUrl = `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+            
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: "Experiment result: ${{ inputs.experiment_type }}",
-              body: `### Output:\n\n\`\`\`\n${process.env.OUTPUT}\n\`\`\``
-            })
-
-
-    
+              title: `🤖 Chaos Experiment: ${{ inputs.experiment_type }} – ${{ env.JOB_NAME }}`,
+              body: [
+                `## Chaos Experiment Report`,
+                `**Type:** \`${{ inputs.experiment_type }}\``,
+                `**Job:** \`${{ env.JOB_NAME }}\``,
+                `**Run:** [Actions #${{ github.run_id }}](${artifactUrl})`,
+                ``,
+                `> 📎 Pełne logi dostępne jako [artifact](${artifactUrl}) przez 30 dni`,
+                ``,
+                `### Log (ostatnie 8000 znaków)`,
+                `\`\`\``,
+                tail,
+                `\`\`\``
+              ].join('\n')
+            });
