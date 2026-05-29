@@ -34,6 +34,10 @@ spec:
       restartPolicy: Never
       nodeSelector:
         kubernetes.io/hostname: k3s-worker-node2
+      volumes:
+        - name: logs
+          persistentVolumeClaim:
+            claimName: chaos-agent-logs        
       containers:
         - name: chaos-agent
           image: zboromir/chaos-agent:latest
@@ -59,6 +63,9 @@ spec:
             limits:
               cpu: "500m"
               memory: "256Mi"
+          volumeMounts:
+            - name: logs
+              mountPath: /logs
 EOF
 echo "✅ Job ${JOB_NAME} started (type: ${TYPE:-random})"
 echo "📋 Logs: kubectl logs -n ${NAMESPACE} -l job-name=${JOB_NAME} -f"
