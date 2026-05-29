@@ -63,6 +63,9 @@ spec:
             limits:
               cpu: "500m"
               memory: "256Mi"
+          volumeMounts:
+            - name: logs
+              mountPath: /logs
 EOF
 echo "✅ Job ${JOB_NAME} started (type: ${TYPE:-random})"
 echo "📋 Logs: kubectl logs -n ${NAMESPACE} -l job-name=${JOB_NAME} -f"
